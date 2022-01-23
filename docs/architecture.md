@@ -3,39 +3,36 @@ Here's the db layout:
 ```mermaid
 erDiagram
     User ||--o{ LoginSession : has
-    User ||--o{ DiscordAccount : "logs in with"
+    User ||--o{ DiscordAccount : has
     User {
         string ID PK
         string Name
         string HighestRole
-        timestamp DiscordLastUpdatedAt
-        string Avatar-FileID
+        FileID Avatar
     }
     LoginSession {
-        string UserID-FK PK
-        guid RandomSessionID PK
+        UserID User PK
+        random SessionID PK
         timestamp Expires
     }
     DiscordAccount {
-        string DiscordID PK
-        string UserID
-        guid RegistrationHash
-        timestamp RegistrationTimesOutAt
+        string ID PK "discord 'snowflake'"
+        string UserID-FK
     }
     User ||--o{ Character : "creator of"
     Character {
         string ID PK
         string Name
+        UserID Creator "Optional"
         string CreatorName
-        string CreatorID-FK
-        string Bio
+        string Description
         string Rating
         bool Claimable
     }
     User ||--o{ File : uploads
     File {
-        string ID PK
-        string Uploader-FK
+        guid ID PK
+        UserID Uploader
         string URL
         string Filename
     }
@@ -43,7 +40,8 @@ erDiagram
     Art }o--o{ Character : "includes"
     User }o--o{ Art : "is artist of"
     Art {
-        string FileID-FK PK
+        FileID File PK
+        string Name
         string Description
         string Rating
     }
