@@ -1,0 +1,9 @@
+{
+  "compilerOptions": {
+    "module": "commonjs",
+    "target": "es2021",
+    "rootDir": "./src/",
+    "esModuleInterop": true,
+    "moduleResolution": "nodenext"
+  }
+}

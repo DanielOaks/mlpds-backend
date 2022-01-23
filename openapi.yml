@@ -1,0 +1,201 @@
+openapi: 3.1.0
+info:
+  title: MLP Drawing School
+  version: '0.1'
+  license:
+    identifier: CC0-1.0
+    name: Public Domain (CC0)
+servers:
+  - url: 'http://localhost:3000'
+    description: main
+paths:
+  /auth-callback:
+    get:
+      summary: Your GET endpoint
+      tags: []
+      responses: {}
+      operationId: get-auth-callback
+  /v1/characters:
+    get:
+      summary: View All Characters
+      tags: []
+      responses:
+        '200':
+          description: OK
+          headers: {}
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Character'
+      operationId: get-characters
+      description: View all (or just your own) characters.
+      parameters:
+        - schema:
+            type: boolean
+          in: query
+          name: mine
+          allowEmptyValue: true
+          description: Only return characters you're the creator of.
+    parameters: []
+  '/v1/character/{id}':
+    get:
+      summary: View Character
+      tags: []
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Character'
+              examples:
+                example-1:
+                  value:
+                    id: string
+                    name: string
+                    creator:
+                      id: '0123456789'
+                      username: pixienop
+                      avatar: '1234567890'
+                      accent_color: 16711680
+      operationId: get-character
+      description: View the given character's information.
+    parameters:
+      - schema:
+          type: string
+        name: id
+        in: path
+        required: true
+        description: 'Character ID (e.g. `daisy`, `fineline`).'
+    delete:
+      summary: Delete Character
+      operationId: delete-character
+      responses:
+        '200':
+          description: OK
+        '403':
+          description: Forbidden
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              examples:
+                example-1:
+                  value:
+                    message: You cannot delete this character.
+      description: Delete the character.
+    put:
+      summary: ''
+      operationId: update-character
+      responses:
+        '200':
+          description: OK
+        '403':
+          description: Forbidden
+      description: Update the character's information.
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Character'
+  /v1/character:
+    post:
+      summary: Create Character
+      operationId: create-character
+      responses:
+        '200':
+          description: OK
+        '403':
+          description: Forbidden
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              examples:
+                example-1:
+                  value:
+                    message: There is already a character with this ID.
+      description: Create a new character
+  /v1/user:
+    get:
+      summary: Get Your Profile
+      tags: []
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  profile:
+                    $ref: '#/components/schemas/User'
+                  characters:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Character'
+              examples: {}
+      operationId: get-your-profile
+      description: ''
+    put:
+      summary: Update Your Profile
+      operationId: update-your-profile
+      responses:
+        '200':
+          description: OK
+    delete:
+      summary: Delete Your Profile
+      operationId: delete-your-profile
+      responses:
+        '200':
+          description: OK
+        '403':
+          description: Forbidden
+components:
+  schemas:
+    User:
+      title: User
+      type: object
+      description: ''
+      examples:
+        - id: '0123456789'
+          username: pixienop
+          avatar: '1234567890'
+          accent_color: 16711680
+      properties:
+        id:
+          type: string
+          description: Unique identifier (e.g. `daniel`).
+        name:
+          type: string
+          description: Displayed name.
+        avatar:
+          type: string
+          description: File ID.
+        accent_color:
+          type: integer
+          description: RRGGBB hex value as an integer.
+      required:
+        - id
+        - name
+    Character:
+      title: Character
+      type: object
+      properties:
+        id:
+          type: string
+          description: Unique identifier for the character (e.g. `daisy`).
+        name:
+          type: string
+          description: Displayed name.
+        creator:
+          $ref: '#/components/schemas/User'
+    Error:
+      title: Error
+      type: object
+      properties:
+        message:
+          type: string
+  responses: {}
