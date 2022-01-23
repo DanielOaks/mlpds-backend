@@ -7,6 +7,8 @@ import cookieParser from 'cookie-parser';
 const discord_authorize_endpoint = 'https://discord.com/api/oauth2/authorize';
 const discord_token_endpoint = 'https://discord.com/api/oauth2/token';
 
+const discord_get_current_user_endpoint = 'https://discord.com/api/v9/users/@me';
+
 const app = express();
 app.use(cookieParser())
 
@@ -55,11 +57,44 @@ app.get('/auth/discord/callback', (req, res) => {
     form.append('redirect_uri', req.cookies.last_redirect_uri);
 
     axios.post(discord_token_endpoint, form, { headers: form.getHeaders() })
-      .then(function (response) {
-        res.status(200).json(response.data);
+      .then(response => {
+        const config = {
+          headers: {
+            Authorization: `Bearer ${response.data.access_token}`,
+          },
+        };
+        axios.get(discord_get_current_user_endpoint, config)
+          .then(response => {
+            const config = {
+              headers: {
+                Authorization: `Bot ${process.env.MLPDS_DISCORD_BOT_TOKEN}`,
+              },
+            };
+            console.log(response.data);
+            const endpoint = `https://discord.com/api/v9/guilds/${process.env.MLPDS_DISCORD_GUILD_ID}/members/${response.data.id}`;
+            axios.get(endpoint, config)
+              .then(response => {
+                res.status(200).json(response.data);
+              })
+              .catch(error => {
+                res.status(400).json({
+                  'error': "Couldn't get guild data",
+                  'data': error.response.data,
+                });
+              });
+          })
+          .catch(error => {
+            res.status(400).json({
+              'error': "Couldn't get user data",
+              'data': error.response.data,
+            });
+          });
       })
-      .catch(function (error) {
-        res.status(400).json(error.response.data);
+      .catch(error => {
+        res.status(400).json({
+          'error': "Couldn't get token",
+          'data': error.response.data,
+        });
       });
     return
   }

@@ -22,3 +22,7 @@ Here are the environment variables this app uses:
 - `MLPDS_BACKEND_SESSION_SECRET`: Secret used for the backend's session cookies.
 - `MLPDS_DISCORD_CLIENT_ID`: Discord Client ID of the MLPDS bot.
 - `MLPDS_DISCORD_CLIENT_SECRET`: Discord Client Secret of the MLPDS bot.
+- `MLPDS_DISCORD_BOT_TOKEN`: Token for the MLPDS bot.
+- `MLPDS_DISCORD_GUILD_ID`: ID of the MLPDS Discord Guild.
+
+You can store these in a `.env` file in the root, for local development.
