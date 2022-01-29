@@ -1,110 +1,27 @@
 import 'dotenv/config';
 import express from 'express';
-import axios from 'axios';
-import FormData from 'form-data';
 import cookieParser from 'cookie-parser';
+import { nanoid } from 'nanoid';
 
-const discord_authorize_endpoint = 'https://discord.com/api/oauth2/authorize';
-const discord_token_endpoint = 'https://discord.com/api/oauth2/token';
+import { DB } from './db';
+import { AuthRouter } from './routers/auth';
 
-const discord_get_current_user_endpoint = 'https://discord.com/api/v9/users/@me';
+console.log('randomCheckValue is', nanoid(18));
 
 const app = express();
-app.use(cookieParser())
+app.locals = {
+  db: new DB(process.env.MLPDS_BACKEND_PG_CONNECTION_STRING),
 
-app.get('/auth/discord', (req, res) => {
-  // this is how the frontend tells us where to redirect on each case
-  const qstring_mlpds = new URLSearchParams({
-    fail: req.query.fail ? req.query.fail.toString() : `/nay`,
-    login: req.query.login ? req.query.login.toString() : `/yay`,
-    new: req.query.new ? req.query.new.toString() : `/yayc`,
-  }).toString();
-  let redirect_uri = `${process.env.MLPDS_BACKEND_PUBLIC_URL}/auth/discord/callback?${qstring_mlpds}`;
+  publicUrl: process.env.MLPDS_BACKEND_PUBLIC_URL,
 
-  // this is how we tell discord where to redirect to
-  const qstring = new URLSearchParams({
-    response_type: 'code',
-    scope: 'identify',
-    client_id: process.env.MLPDS_DISCORD_CLIENT_ID,
-    redirect_uri,
-  }).toString();
+  discordClientID: process.env.MLPDS_DISCORD_CLIENT_ID,
+  discordClientSecret: process.env.MLPDS_DISCORD_CLIENT_SECRET,
+  discordBotToken: process.env.MLPDS_DISCORD_BOT_TOKEN,
+  discordGuildID: process.env.MLPDS_DISCORD_GUILD_ID,
+}
+app.use(cookieParser());
 
-  // the callback needs the same redirect uri so we set that as a
-  //  cookie that'll be used later.
-  res.cookie('last_redirect_uri', redirect_uri);
-
-  res.redirect(`${discord_authorize_endpoint}?${qstring}`);
-});
-app.get('/auth/discord/callback', (req, res) => {
-  if (req.query.error) {
-    // user rejected the auth or something else happened :<
-    const new_query_params = new URLSearchParams({
-      error: req.query.error.toString(),
-      error_description: req.query.error_description.toString(),
-    }).toString();
-
-    res.redirect(`${req.query.fail}?${new_query_params}`)
-    return
-  }
-
-  if (req.query.code) {
-    // success! let's find out which user we just authed as
-    var form = new FormData();
-    form.append('client_id', process.env.MLPDS_DISCORD_CLIENT_ID);
-    form.append('client_secret', process.env.MLPDS_DISCORD_CLIENT_SECRET);
-    form.append('grant_type', 'authorization_code');
-    form.append('code', req.query.code);
-    form.append('redirect_uri', req.cookies.last_redirect_uri);
-
-    axios.post(discord_token_endpoint, form, { headers: form.getHeaders() })
-      .then(response => {
-        const config = {
-          headers: {
-            Authorization: `Bearer ${response.data.access_token}`,
-          },
-        };
-        axios.get(discord_get_current_user_endpoint, config)
-          .then(response => {
-            const config = {
-              headers: {
-                Authorization: `Bot ${process.env.MLPDS_DISCORD_BOT_TOKEN}`,
-              },
-            };
-            console.log(response.data);
-            const endpoint = `https://discord.com/api/v9/guilds/${process.env.MLPDS_DISCORD_GUILD_ID}/members/${response.data.id}`;
-            axios.get(endpoint, config)
-              .then(response => {
-                res.status(200).json(response.data);
-              })
-              .catch(error => {
-                res.status(400).json({
-                  'error': "Couldn't get guild data",
-                  'data': error.response.data,
-                });
-              });
-          })
-          .catch(error => {
-            res.status(400).json({
-              'error': "Couldn't get user data",
-              'data': error.response.data,
-            });
-          });
-      })
-      .catch(error => {
-        res.status(400).json({
-          'error': "Couldn't get token",
-          'data': error.response.data,
-        });
-      });
-    return
-  }
-
-  res.status(400).json({
-    'error': 'Discord sent us something strange',
-    'params': req.params,
-    'query': req.query,
-  });
-});
+app.use('/auth', AuthRouter);
 
 app.listen(process.env.MLPDS_BACKEND_PORT, () => {
   console.log(`App is running on port ${process.env.MLPDS_BACKEND_PORT}.`);
