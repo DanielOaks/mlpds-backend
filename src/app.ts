@@ -5,6 +5,7 @@ import { nanoid } from 'nanoid';
 
 import { DB } from './db';
 import { AuthRouter } from './routers/auth';
+import { NayayRouter } from './routers/nayay';
 
 console.log('randomCheckValue is', nanoid(18));
 
@@ -21,6 +22,7 @@ app.locals = {
 }
 app.use(cookieParser());
 
+app.use('/', NayayRouter);
 app.use('/auth', AuthRouter);
 
 app.listen(process.env.MLPDS_BACKEND_PORT, () => {

@@ -20,8 +20,8 @@ function redirectToDiscord(req, res) {
   // this is how the frontend tells us where to redirect on each case
   const qstring_mlpds = new URLSearchParams({
     fail: req.query.fail ? req.query.fail.toString() : `/nay`,
-    login: req.query.login ? req.query.login.toString() : `/yay`,
-    new: req.query.new ? req.query.new.toString() : `/yayc`,
+    login: req.query.login ? req.query.login.toString() : `/yay?action=login`,
+    new: req.query.new ? req.query.new.toString() : `/yay?action=register`,
   }).toString();
   let redirect_uri = `${req.app.locals.publicUrl}/auth/discord/callback?${qstring_mlpds}`;
 
@@ -41,16 +41,16 @@ function redirectToDiscord(req, res) {
 }
 
 function callbackFromDiscord(req, res) {
+  var failURL = req.query.fail.startsWith('/') ? `${req.app.locals.publicUrl}${req.query.fail}` : req.query.fail;
+
   if (req.query.error) {
     // user rejected the auth or something else happened :<
-    const new_query_params = new URLSearchParams({
-      error: req.query.error.toString(),
-      data: JSON.stringify({
-        'description': req.query.error_description.toString(),
-      }),
-    }).toString();
-
-    res.redirect(`${req.query.fail}?${new_query_params}`)
+    const url = new URL(failURL);
+    url.searchParams.set('error', req.query.error.toString());
+    url.searchParams.set('data', JSON.stringify({
+      'description': req.query.error_description.toString(),
+    }));
+    res.redirect(url.toString());
     return
   }
 
@@ -72,36 +72,38 @@ function callbackFromDiscord(req, res) {
         };
         axios.get(discord_get_current_user_endpoint, config)
           .then(response => {
+            // we do this to get the guild data so that we don't
+            //  need to request the `guilds.members.read` oauth2
+            //  scope, because that one feels SCARY to users… 
             const config = {
               headers: {
                 Authorization: `Bot ${req.app.locals.discordBotToken}`,
               },
             };
-            console.log(response.data);
             const endpoint = `https://discord.com/api/v9/guilds/${req.app.locals.discordGuildID}/members/${response.data.id}`;
             axios.get(endpoint, config)
               .then(response => {
                 res.status(200).json(response.data);
               })
               .catch(error => {
-                res.status(400).json({
-                  'error': "Couldn't get guild data",
-                  'data': error.response.data,
-                });
+                const url = new URL(failURL);
+                url.searchParams.set('error', "Couldn't get guild data");
+                url.searchParams.set('data', JSON.stringify(error.response.data));
+                res.redirect(url.toString());
               });
           })
           .catch(error => {
-            res.status(400).json({
-              'error': "Couldn't get user data",
-              'data': error.response.data,
-            });
+            const url = new URL(failURL);
+            url.searchParams.set('error', "Couldn't get user data");
+            url.searchParams.set('data', JSON.stringify(error.response.data));
+            res.redirect(url.toString());
           });
       })
       .catch(error => {
-        res.status(400).json({
-          'error': "Couldn't get token",
-          'data': error.response.data,
-        });
+        const url = new URL(failURL);
+        url.searchParams.set('error', "Couldn't get token");
+        url.searchParams.set('data', JSON.stringify(error.response.data));
+        res.redirect(url.toString());
       });
     return
   }
