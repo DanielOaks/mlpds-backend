@@ -18,12 +18,16 @@ router.get('/discord/callback', callbackFromDiscord);
 
 function redirectToDiscord(req, res) {
   // this is how the frontend tells us where to redirect on each case
-  const qstring_mlpds = new URLSearchParams({
+  let qstring_mlpds = new URLSearchParams({
     fail: req.query.fail ? req.query.fail.toString() : `/nay`,
     login: req.query.login ? req.query.login.toString() : `/yay?action=login`,
     new: req.query.new ? req.query.new.toString() : `/yay?action=register`,
   }).toString();
+  if (req.query.fe !== undefined) {
+    qstring_mlpds = 'fe';
+  }
   let redirect_uri = `${req.app.locals.publicUrl}/auth/discord/callback?${qstring_mlpds}`;
+  console.log(req.query, redirect_uri);
 
   // this is how we tell discord where to redirect to
   const qstring = new URLSearchParams({
@@ -41,7 +45,12 @@ function redirectToDiscord(req, res) {
 }
 
 function callbackFromDiscord(req, res) {
-  var failURL = req.query.fail.startsWith('/') ? `${req.app.locals.publicUrl}${req.query.fail}` : req.query.fail;
+  var createAccountURL = req.query.new && req.query.new.startsWith('/') ? `${req.app.locals.publicUrl}${req.query.new}` : req.query.new;
+  var failURL = req.query.fail && req.query.fail.startsWith('/') ? `${req.app.locals.publicUrl}${req.query.fail}` : req.query.fail;
+  if (req.query.fe !== undefined) {
+    createAccountURL = `${req.app.locals.frontendUrl}/create-account`;
+    failURL = `${req.app.locals.frontendUrl}/login-failed`;
+  }
 
   if (req.query.error) {
     // user rejected the auth or something else happened :<
@@ -72,6 +81,8 @@ function callbackFromDiscord(req, res) {
         };
         axios.get(discord_get_current_user_endpoint, config)
           .then(response => {
+            //TODO: login if account already exists
+
             // we do this to get the guild data so that we don't
             //  need to request the `guilds.members.read` oauth2
             //  scope, because that one feels SCARY to users… 
@@ -83,7 +94,19 @@ function callbackFromDiscord(req, res) {
             const endpoint = `https://discord.com/api/v9/guilds/${req.app.locals.discordGuildID}/members/${response.data.id}`;
             axios.get(endpoint, config)
               .then(response => {
-                res.status(200).json(response.data);
+                const expiry = new Date();
+                expiry.setSeconds(expiry.getSeconds() + req.app.locals.discordHoldsValidFor);
+                const checkValue = req.app.locals.db.createDiscordHold(response.data.user.id, expiry, response.data);
+
+                // res.status(200).json(response.data);
+
+                const url = new URL(createAccountURL);
+                url.searchParams.set('id', response.data.user.id);
+                url.searchParams.set('name', response.data.nick || response.data.user.username);
+                url.searchParams.set('avatar', response.data.user.avatar);
+                url.searchParams.set('checkValue', checkValue);
+                url.searchParams.set('expiry', expiry.toISOString());
+                res.redirect(url.toString());
               })
               .catch(error => {
                 const url = new URL(failURL);
