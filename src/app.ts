@@ -13,7 +13,7 @@ app.locals = {
   publicUrl: process.env.MLPDS_BACKEND_PUBLIC_URL,
   frontendUrl: process.env.MLPDS_FRONTEND_PUBLIC_URL,
 
-  discordHoldsValidFor: process.env.MLPDS_DISCORD_HOLDS_VALID_FOR,
+  discordHoldsValidFor: parseInt(process.env.MLPDS_DISCORD_HOLDS_VALID_FOR),
   discordClientID: process.env.MLPDS_DISCORD_CLIENT_ID,
   discordClientSecret: process.env.MLPDS_DISCORD_CLIENT_SECRET,
   discordBotToken: process.env.MLPDS_DISCORD_BOT_TOKEN,
